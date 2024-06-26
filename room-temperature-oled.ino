@@ -36,7 +36,8 @@ DHT dht(DHTPIN, DHTTYPE);
 // current temperature & humidity, updated in loop()
 float t = 0.0;
 float h = 0.0;
-
+float feels= 0.0;
+float farenheit= 0.0;
 // Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 
@@ -128,6 +129,23 @@ String processor(const String& var){
   return String();
 }
 
+float calculateFeelsLike(float farenheit, float h) {
+  float feels = -42.379 + 2.04901523*farenheit + 10.14333127*h - .22475541*farenheit*h - .00683783*farenheit*farenheit - .05481717*h*h + .00122874*farenheit*farenheit*h + .00085282*farenheit*h*h - .00000199*farenheit*farenheit*h*h;
+      if (h< 13 && farenheit>= 80 && farenheit<=110) {
+        // ADJUSTMENT = [(13-RH)/4]*SQRT{[17-ABS(T-95.)]/17}
+        float adjust = ((13-h)/4)  * sqrt(17-abs(farenheit-95.)/17);
+        feels -= adjust;
+      } else if (h>85 && farenheit>80 && farenheit<87) {
+        // ADJUSTMENT = [(RH-85)/10] * [(87-T)/5]
+        float adjust = ((h-85)/10) * ((87-farenheit)/5);
+        feels += adjust;
+      } else if (farenheit<80){
+        // HI = 0.5 * {T + 61.0 + [(T-68.0)*1.2] + (RH*0.094)} 
+         feels = 0.5 * (farenheit + 61.0 + ((farenheit-68.0)*1.2) + (h*0.094));
+      }
+      feels = (feels-32)*(5.0/9.0);
+      return feels;
+}
 void setup(){
   // Serial port for debugging purposes
   Serial.begin(115200);
@@ -141,7 +159,7 @@ void setup(){
 
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0,28);
+  display.setCursor(60,28);
   display.println("Yo.");
   display.display();
   delay(2000);
@@ -152,6 +170,14 @@ void setup(){
     delay(1000);
     Serial.println(".");
   }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(14,28);
+  display.println("Connected to Wifi.");
+  display.display();
+  delay(2000);
 
   // Print ESP8266 Local IP Address
   Serial.println(WiFi.localIP());
@@ -172,18 +198,19 @@ void setup(){
  
 void loop(){  
   display.clearDisplay();
-  
-  display.setTextSize(3);
+  String temp = "Temp:" + String(t,1) + "C";
+  String humid = "Humid:" + String(h,0) + "%";
+  String heat = "Heat:" + String(feels,1) + "C";
+  display.setTextSize(2);
   display.setTextColor(WHITE);
   display.setCursor(0,0);
-  display.print(t);
-  display.print("C ");
-  display.print(h);
-  display.print("%");
+  display.println(heat);
+  display.println(temp);
+  display.print(humid);
   display.display();
-  display.startscrollleft(0x00, 0x02);
+  //display.startscrollleft(0x00, 0x01);
   delay(8000);
-  display.stopscroll();
+  //display.stopscroll();
 
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
@@ -199,6 +226,8 @@ void loop(){
     }
     else {
       t = newT;
+      farenheit = (t*(1.8))+32;
+      feels = calculateFeelsLike(farenheit, h);
       Serial.println(t);
     }
     // Read Humidity
@@ -209,7 +238,10 @@ void loop(){
     }
     else {
       h = newH;
+      feels = calculateFeelsLike(farenheit, h);
       Serial.println(h);
     }
   }
+      Serial.print("Feels Like: ");
+      Serial.println(feels);
 }
