@@ -73,10 +73,16 @@ const char index_html[] PROGMEM = R"rawliteral(
 <body>
   <h2>ESP8266 DHT Server</h2>
   <p>
+    <i class="fas fa-thermometer" style="color:#059e8a;"></i> 
+    <span class="dht-labels">Feels Like</span> 
+    <span id="temperature">%FEELSLIKE%</span>
+    <sup class="units">C</sup>
+  </p>
+  <p>
     <i class="fas fa-thermometer-half" style="color:#059e8a;"></i> 
     <span class="dht-labels">Temperature</span> 
     <span id="temperature">%TEMPERATURE%</span>
-    <sup class="units">°C</sup>
+    <sup class="units">C</sup>
   </p>
   <p>
     <i class="fas fa-tint" style="color:#00add6;"></i> 
@@ -88,12 +94,22 @@ const char index_html[] PROGMEM = R"rawliteral(
       
     </P>
   <p>
-    <span style="font-size:1.0rem;">Welcome to </span>
-    <h3>DarthTemp<h3>
+    <span style="font-size:1.0rem;">DarthTemp</span>
   </P>
 </body>
 <script>
 setInterval(function ( ) {
+
+  var xhttp = new XMLHttpRequest();
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("feelslike").innerHTML = this.responseText;
+    }
+  };
+  xhttp.open("GET", "/feelslike", true);
+  xhttp.send();
+}, 10000 ) ;
+  
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -125,6 +141,9 @@ String processor(const String& var){
   }
   else if(var == "HUMIDITY"){
     return String(h);
+  }
+  else if(var == "FEELSLIKE"){
+    return String(feels);
   }
   return String();
 }
@@ -174,10 +193,12 @@ void setup(){
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(14,28);
-  display.println("Connected to Wifi.");
+  display.setCursor(0,28);
+  display.print("Connected to ");
+  display.println(ssid);
+  display.print(WiFi.localIP());
   display.display();
-  delay(2000);
+  delay(4000);
 
   // Print ESP8266 Local IP Address
   Serial.println(WiFi.localIP());
@@ -185,6 +206,9 @@ void setup(){
   // Route for root / web page
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);
+  });
+  server.on("/feelslike", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/plain", String(feels).c_str());
   });
   server.on("/temperature", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/plain", String(t).c_str());
