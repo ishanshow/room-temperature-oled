@@ -21,8 +21,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Replace with your network credentials
-const char* ssid = "fsociety";
-const char* password = "ishallpass";
+const char* ssid = "SSID";
+const char* password = "PASSWORD";
 
 #define DHTPIN 0     // Digital pin D1 connected to the DHT sensor
 
